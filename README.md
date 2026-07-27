@@ -114,6 +114,21 @@ incorrectly formatted Date, empty item name, non-numeric cost, negative
 cost, and submitting without any items — with clear, specific error
 message boxes for each case.
 
+## Error Handling
+
+The application performs input validation before processing any requisition.
+
+The system prevents:
+
+- Empty Staff ID
+- Empty Staff Name
+- Invalid dates
+- Empty item names
+- Invalid costs
+- Negative costs
+- Submitting a requisition without any items
+
+Whenever invalid input is detected, the application displays a descriptive message box explaining the problem and allowing the user to correct the information before continuing.
 ## Testing
 
 `main.py` seeds five requisitions directly through `RequisitionManager`
@@ -131,10 +146,15 @@ console tests can be cross-checked against each other.
 
 ## Future Improvements
 
-- Persisting requisitions to a file or database between runs.
-- Exporting requisition history to CSV.
-- Role-based login separating staff and manager views.
+The current prototype satisfies the assessment requirements; however, several enhancements could be added in future versions.
 
+- Storing requisition records in a database instead of memory.
+- Exporting requisition reports to PDF or CSV format.
+- Adding secure login authentication for staff and managers.
+- Implementing role-based access control.
+- Allowing staff to edit or cancel pending requisitions.
+- Adding charts to visualise requisition statistics.
+- Integrating email notifications when requisitions are approved or rejected.
 ## Assessment Mapping
 
 | Rubric criterion | Where it's demonstrated |

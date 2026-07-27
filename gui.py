@@ -486,10 +486,12 @@ class RequisitionApp:
         )
 
         messagebox.showinfo(
-            "Requisition Submitted Successfully",
-            f"Requisition {new_requisition.requisition_id} has been submitted.\n"
-            f"Current status: {new_requisition.status}",
-        )
+    "Requisition Submitted Successfully",
+    f"Requisition ID: {new_requisition.requisition_id}\n\n"
+    f"Status: {new_requisition.status}\n"
+    f"Total Cost: ${new_requisition.total_cost:,.2f}\n\n"
+    "The requisition has been recorded successfully."
+)
 
         self.clear_form()
         self.refresh_all()
@@ -533,9 +535,11 @@ class RequisitionApp:
             return
 
         messagebox.showinfo(
-            "Decision Recorded",
-            f"Requisition {updated.requisition_id} is now marked as {updated.status}.",
-        )
+    "Manager Decision Saved",
+    f"Requisition ID: {updated.requisition_id}\n\n"
+    f"New Status: {updated.status}\n\n"
+    "The requisition statistics have been updated successfully."
+)
         self.refresh_all()
 
     def refresh_manager_list(self):
@@ -578,7 +582,11 @@ class RequisitionApp:
             self.history_tree.insert("", "end", values=requisition.to_row())
 
         if not results:
-            messagebox.showinfo("No Results", "No requisitions were found for that Staff ID.")
+    messagebox.showinfo(
+        "Search Completed",
+        "No requisitions were found for the entered Staff ID.\n"
+        "Please verify the Staff ID and try again."
+    )
 
     def refresh_history(self):
         """Refreshing the Requisition History Treeview with every stored requisition."""
