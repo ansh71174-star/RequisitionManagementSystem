@@ -47,8 +47,8 @@ class RequisitionApp:
         self.root.title("Requisition Management System")
 
         # Setting a larger window size for a more professional interface
-        self.root.geometry("1400x850")
-        self.root.minsize(1200, 750)
+        self.root.geometry("1500x950")
+        self.root.minsize(1400, 900)
         self.root.configure(background=COLOR_BACKGROUND)
 
         # Using an existing manager when one is being supplied, so main.py
@@ -147,11 +147,49 @@ class RequisitionApp:
         """
         Building the complete application layout: the title banner and
         the left/right column arrangement that holds every section.
+
+        Everything is placed inside a scrollable canvas. On shorter
+        screens the full layout (Staff Info + Item Entry + Requisition +
+        Manager Section on the left, Statistics + Search + History on the
+        right) can be taller than the available screen height. Without
+        scrolling, whatever falls below the bottom of the screen -- most
+        often the Manager Section's pending-requisitions list -- is
+        simply cut off and invisible, even though the data is there.
+        Wrapping the layout in a canvas + scrollbar guarantees every
+        section can always be scrolled into view.
         """
-        container = ttk.Frame(self.root, padding=14)
-        container.grid(row=0, column=0, sticky="nsew")
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
+
+        outer = ttk.Frame(self.root)
+        outer.grid(row=0, column=0, sticky="nsew")
+        outer.grid_rowconfigure(0, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
+
+        canvas = tk.Canvas(outer, background=COLOR_BACKGROUND, highlightthickness=0)
+        v_scroll = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=v_scroll.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        v_scroll.grid(row=0, column=1, sticky="ns")
+
+        container = ttk.Frame(canvas, padding=14)
+        container_window = canvas.create_window((0, 0), window=container, anchor="nw")
+
+        def _on_container_configure(event):
+            # Keeping the scroll region in sync with the container's actual size
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(event):
+            # Making the inner container track the canvas width so the
+            # left/right columns still stretch to fill the window
+            canvas.itemconfig(container_window, width=event.width)
+
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        container.bind("<Configure>", _on_container_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
         container.grid_columnconfigure(0, weight=3)
         container.grid_columnconfigure(1, weight=2)
@@ -163,6 +201,11 @@ class RequisitionApp:
         left_column = ttk.Frame(container)
         left_column.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         left_column.grid_columnconfigure(0, weight=1)
+        # Allocating vertical space across all sections in the left column
+        left_column.grid_rowconfigure(0, weight=0)   # Staff Information
+        left_column.grid_rowconfigure(1, weight=1)   # Item Entry
+        left_column.grid_rowconfigure(2, weight=0)   # Requisition
+        left_column.grid_rowconfigure(3, weight=1)   # Manager Section
 
         right_column = ttk.Frame(container)
         right_column.grid(row=1, column=1, sticky="nsew")
@@ -230,7 +273,7 @@ class RequisitionApp:
     def _build_item_section(self, parent):
         """Building the Item Entry section: item fields, buttons, and a Treeview list."""
         frame = ttk.LabelFrame(parent, text="Item Entry", padding=12)
-        frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         frame.grid_columnconfigure(1, weight=1)
         frame.grid_columnconfigure(3, weight=1)
 
@@ -248,13 +291,18 @@ class RequisitionApp:
         ttk.Button(button_row, text="Remove Selected", width=18, command=self.remove_selected_item).pack(side="left", padx=3)
         ttk.Button(button_row, text="Clear Items", width=18, command=self.clear_items).pack(side="left", padx=3)
 
-        # Displaying entered items inside a Treeview table with a scrollbar
+        # Displaying entered items inside a Treeview table with a scrollbar.
+        # Placed in row 2 (not row 1, which the button row already occupies)
+        # so the two no longer overlap, and the frame's row 2 is given
+        # weight so this table actually gets vertical room to render.
         tree_frame = ttk.Frame(frame)
         tree_frame.grid(row=2, column=0, columnspan=4, sticky="nsew")
+
         frame.grid_rowconfigure(2, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
 
         columns = ("item", "cost")
-        self.item_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=5)
+        self.item_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=8)
         self.item_tree.heading("item", text="Item Name")
         self.item_tree.heading("cost", text="Cost")
         self.item_tree.column("item", width=220)
@@ -304,9 +352,11 @@ class RequisitionApp:
 
         tree_frame = ttk.Frame(frame)
         tree_frame.grid(row=1, column=0, sticky="nsew")
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
 
         columns = ("id", "staff_id", "staff_name", "total")
-        self.manager_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=6)
+        self.manager_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=5)
         self.manager_tree.heading("id", text="Requisition ID")
         self.manager_tree.heading("staff_id", text="Staff ID")
         self.manager_tree.heading("staff_name", text="Staff Name")
@@ -316,8 +366,9 @@ class RequisitionApp:
 
         manager_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.manager_tree.yview)
         self.manager_tree.configure(yscrollcommand=manager_scroll.set)
-        self.manager_tree.pack(side="left", fill="both", expand=True)
-        manager_scroll.pack(side="right", fill="y")
+        self.manager_tree.grid(row=0, column=0, sticky="nsew")
+        manager_scroll.grid(row=0, column=1, sticky="ns")
+        
 
     # ------------------------------------------------------------------
     # Statistics section
@@ -374,7 +425,12 @@ class RequisitionApp:
             "approval": "Approval Ref",
         }
 
-        self.history_tree = ttk.Treeview(frame, columns=columns, show="headings")
+        self.history_tree = ttk.Treeview(
+    frame,
+    columns=columns,
+    show="headings",
+    height=10
+)
         for col in columns:
             self.history_tree.heading(col, text=headings[col])
             self.history_tree.column(col, width=100, anchor="center")
@@ -391,10 +447,11 @@ class RequisitionApp:
         self.detail_label = ttk.Label(
             frame,
             text="Select a requisition to view its full details.",
-            wraplength=380,
+            wraplength=700,
             justify="left",
+            anchor="w",
         )
-        self.detail_label.grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        self.detail_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         self.history_tree.bind("<<TreeviewSelect>>", self.show_selected_details)
 
     # ------------------------------------------------------------------
@@ -582,7 +639,7 @@ class RequisitionApp:
             self.history_tree.insert("", "end", values=requisition.to_row())
 
         if not results:
-    messagebox.showinfo(
+            messagebox.showinfo(
         "Search Completed",
         "No requisitions were found for the entered Staff ID.\n"
         "Please verify the Staff ID and try again."
